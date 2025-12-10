@@ -100,7 +100,7 @@ eps_decay = 0.95
 
 gated = False
 train_sims = 200
-warmup_iters = 5
+warmup_iters = 3
 # Gating params: how we decide if a new model is better
 gating_games = 100        # number of head-to-head games per iteration
 gating_threshold = 0.55  # require at least 50% winrate to accept

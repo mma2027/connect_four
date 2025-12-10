@@ -15,6 +15,7 @@ import os
 import sys
 import copy
 import time
+import re
 
 from neural_network import SimpleNN
 from helper import (
@@ -131,13 +132,71 @@ class NN_MCTS_Wrapper(AgentWrapper):
 # SELECT AGENT
 # ======================================================
 
+def _model_sort_key(path):
+    """
+    Sort models in a human-friendly way:
+      1) model_final.npz (if present)
+      2) model_gen_0.npz, model_gen_1.npz, ..., numerically
+      3) Anything else, lexicographically
+    """
+    name = os.path.basename(path)
+
+    # final model first
+    if name == "model_final.npz":
+        return (0, -1)
+
+    # match model_gen_X.npz
+    m = re.match(r"model_gen_(\d+)\.npz", name)
+    if m:
+        gen = int(m.group(1))
+        return (1, gen)
+
+    # fallback: other npz names
+    return (2, name.lower())
+
+
+# ======================================================
+# MODEL DISCOVERY (recursive, with smart ordering)
+# ======================================================
+
+def _model_sort_key(path):
+    """
+    Sort models in a human-friendly way:
+      1) model_final.npz
+      2) model_gen_0.npz, model_gen_1.npz, ... (numerically)
+      3) Anything else, lexicographically by name/path
+    """
+    name = os.path.basename(path)
+
+    # final model(s) first
+    if name == "model_final.npz":
+        return (0, -1, path.lower())
+
+    # match model_gen_X.npz
+    m = re.match(r"model_gen_(\d+)\.npz", name)
+    if m:
+        gen = int(m.group(1))
+        return (1, gen, path.lower())
+
+    # fallback: other npz names
+    return (2, name.lower(), path.lower())
+
+
 def list_models(path="models"):
+    """
+    Recursively walk `path` and return all .npz files,
+    sorted by _model_sort_key.
+    """
     if not os.path.isdir(path):
         return []
-    out = [os.path.join(path, f)
-           for f in os.listdir(path)
-           if f.endswith(".npz")]
-    return sorted(out)
+
+    out = []
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            if f.endswith(".npz"):
+                out.append(os.path.join(root, f))
+
+    return sorted(out, key=_model_sort_key)
 
 
 def choose_agent(prompt, models_dir="models"):
@@ -152,7 +211,9 @@ def choose_agent(prompt, models_dir="models"):
     if model_files:
         print(color("  [Models as NN+MCTS]:", BOLD, YELLOW))
         for i, m in enumerate(model_files):
-            print(color(f"    [{i+offset}] {os.path.basename(m)}", DIM, CYAN))
+            # show relative path so you can see folders like old1.0/model_gen_5.npz
+            label = os.path.relpath(m, models_dir)
+            print(color(f"    [{i + offset}] {label}", DIM, CYAN))
     else:
         print(color("  No models found.", RED))
 
@@ -171,7 +232,9 @@ def choose_agent(prompt, models_dir="models"):
         midx = idx - offset
         if 0 <= midx < len(model_files):
             return NN_MCTS_Wrapper(model_files[midx])
+
         print(color("Invalid index.", RED))
+
 
 
 # ======================================================

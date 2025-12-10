@@ -20,7 +20,7 @@ import math
 
 MODEL_PATH = "models/model_final.npz"     # which model to load
 
-PLAYER_TO_MOVE = 1                        # 1 or 2
+PLAYER_TO_MOVE = 2                        # 1 or 2
 
 # Hardcode the board position here.
 # Format: 6 rows, '/' separated, '.' empty, '1' player1, '2' player2
@@ -31,7 +31,7 @@ BOARD_STRING = (
     "......./"
     "......./"
     "......./"
-    "......."
+    ".1.1..."
 )
 
 NUM_SIMULATIONS = 3200
